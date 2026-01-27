@@ -304,7 +304,9 @@ protected:
 	 * This will be called from the work queue.
 	 * A module overriding this, needs to call I2CSPIDriverBase::exit_and_cleanup() as the very last statement.
 	 */
-	virtual void exit_and_cleanup() { ScheduleClear(); _task_exited.store(true); }
+	virtual void exit_and_cleanup() {
+		ScheduleClear();
+		_task_exited.store(true); }// 原子置位：通知 stop/wait 侧“任务已退出”，避免跨线程竞态/未定义行为
 
 	bool should_exit() const { return _task_should_exit.load(); }
 
@@ -316,6 +318,14 @@ private:
 
 	void request_stop_and_wait();
 
+	// 说明：这里使用 px4::atomic_bool 作为“停止/退出握手”标志位。
+	// 该标志会被不同执行上下文访问：
+	//  - 停止请求可能来自 CLI/module_stop 等线程（发出停止请求，置 _task_should_exit）
+	//  - 驱动主体运行在 work queue 线程中（Run/定时调度里轮询 should_exit()）
+	//  - 退出收尾也在 work queue 线程中完成（exit_and_cleanup() 置 _task_exited）
+	//
+	// 为什么不用 volatile：volatile 只能防止编译器把读写优化掉，但不提供线程同步/原子性，跨线程读写会产生 data race。
+	// atomic 的 load/store（必要时配合 exchange）可保证读写不会出现竞态窗口，使 request_stop_and_wait() 等等待逻辑可靠。
 	px4::atomic_bool _task_should_exit{false};
 	px4::atomic_bool _task_exited{false};
 };
