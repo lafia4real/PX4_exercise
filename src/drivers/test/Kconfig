@@ -1,0 +1,5 @@
+menuconfig DRIVERS_TEST
+	bool "test"
+	default n
+	---help---
+		Enable support for test
