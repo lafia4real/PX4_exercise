@@ -763,43 +763,55 @@ void EKF2::Run()
 			_last_time_slip_us = 0;
 		}
 
-		// ekf2_timestamps (using 0.1 ms relative timestamps)
-		ekf2_timestamps_s ekf2_timestamps {
-			.timestamp = now,
-			.airspeed_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
-			.airspeed_validated_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
-			.distance_sensor_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
-			.optical_flow_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
-			.vehicle_air_data_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
-			.vehicle_magnetometer_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
-			.visual_odometry_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
-		};
+		// // ekf2_timestamps (using 0.1 ms relative timestamps)
+		// ekf2_timestamps_s ekf2_timestamps {
+		// 	.timestamp = now,
+		// 	.airspeed_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
+		// 	.airspeed_validated_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
+		// 	.distance_sensor_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
+		// 	.optical_flow_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
+		// 	.vehicle_air_data_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
+		// 	.vehicle_magnetometer_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
+		// 	.visual_odometry_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID,
+		// };
+
+		//临时对象修改为成员变量
+		_ekf2_timestamps.timestamp = now;
+		_ekf2_timestamps.airspeed_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID;
+		_ekf2_timestamps.airspeed_validated_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID;
+		_ekf2_timestamps.distance_sensor_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID;
+		_ekf2_timestamps.optical_flow_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID;
+		_ekf2_timestamps.vehicle_air_data_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID;
+		_ekf2_timestamps.vehicle_magnetometer_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID;
+		_ekf2_timestamps.visual_odometry_timestamp_rel = ekf2_timestamps_s::RELATIVE_TIMESTAMP_INVALID;
+
+
 
 #if defined(CONFIG_EKF2_AIRSPEED)
-		UpdateAirspeedSample(ekf2_timestamps);
+		UpdateAirspeedSample(_ekf2_timestamps);
 #endif // CONFIG_EKF2_AIRSPEED
 #if defined(CONFIG_EKF2_AUXVEL)
-		UpdateAuxVelSample(ekf2_timestamps);
+		UpdateAuxVelSample(_ekf2_timestamps);
 #endif // CONFIG_EKF2_AUXVEL
 #if defined(CONFIG_EKF2_BAROMETER)
-		UpdateBaroSample(ekf2_timestamps);
+		UpdateBaroSample(_ekf2_timestamps);
 #endif // CONFIG_EKF2_BAROMETER
 #if defined(CONFIG_EKF2_EXTERNAL_VISION)
-		UpdateExtVisionSample(ekf2_timestamps);
+		UpdateExtVisionSample(_ekf2_timestamps);
 #endif // CONFIG_EKF2_EXTERNAL_VISION
 #if defined(CONFIG_EKF2_OPTICAL_FLOW)
-		UpdateFlowSample(ekf2_timestamps);
+		UpdateFlowSample(_ekf2_timestamps);
 #endif // CONFIG_EKF2_OPTICAL_FLOW
 #if defined(CONFIG_EKF2_GNSS)
-		UpdateGpsSample(ekf2_timestamps);
+		UpdateGpsSample(_ekf2_timestamps);
 #endif // CONFIG_EKF2_GNSS
 #if defined(CONFIG_EKF2_MAGNETOMETER)
-		UpdateMagSample(ekf2_timestamps);
+		UpdateMagSample(_ekf2_timestamps);
 #endif // CONFIG_EKF2_MAGNETOMETER
 #if defined(CONFIG_EKF2_RANGE_FINDER)
-		UpdateRangeSample(ekf2_timestamps);
+		UpdateRangeSample(_ekf2_timestamps);
 #endif // CONFIG_EKF2_RANGE_FINDER
-		UpdateSystemFlagsSample(ekf2_timestamps);
+		UpdateSystemFlagsSample(_ekf2_timestamps);
 
 		// run the EKF update and output
 		const hrt_abstime ekf_update_start = hrt_absolute_time();
@@ -862,7 +874,7 @@ void EKF2::Run()
 
 
 		// publish ekf2_timestamps
-		_ekf2_timestamps_pub.publish(ekf2_timestamps);
+		_ekf2_timestamps_pub.publish(_ekf2_timestamps);
 	}
 
 	// re-schedule as backup timeout

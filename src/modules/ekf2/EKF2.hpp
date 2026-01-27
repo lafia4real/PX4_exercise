@@ -159,6 +159,9 @@ public:
 
 private:
 
+	//临时对象修改为成员变量
+	ekf2_timestamps_s _ekf2_timestamps{};
+
 	static constexpr uint8_t MAX_NUM_IMUS = 4;
 	static constexpr uint8_t MAX_NUM_MAGS = 4;
 
