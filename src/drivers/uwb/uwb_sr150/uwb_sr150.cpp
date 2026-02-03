@@ -49,6 +49,29 @@
 #include <ctype.h>
 #include <string.h>
 
+/////////////////////////
+#include <cstddef>
+#include <type_traits>
+
+struct __attribute__((packed)) Sr150FrameHeader{
+	uint8_t sof0;		//offset 0
+	uint8_t sof1;		//offset 1
+	uint8_t msg_id;		//offset 2
+	uint16_t payload_len;	//offset 3 (2 bytes)
+	uint32_t seq;		//offset 5 (4 bytes)
+};
+
+//这个struct必须是简单可预测的布局
+static_assert(std::is_standard_layout_v<Sr150FrameHeader>,"standard layout");
+//它总共必须9字节
+static_assert(sizeof(Sr150FrameHeader) == 9,"Sr150FrameHeader size mismatch");
+//payload_len必须在第3字节
+static_assert(offsetof(Sr150FrameHeader,payload_len) == 3,"payload_len offset mismatch");
+//seq必须在第5字节
+static_assert(offsetof(Sr150FrameHeader,seq) == 5,"seq offset mismatch");
+
+/////////////////////////
+
 // Timeout between bytes. If there is more time than this between bytes, then this driver assumes
 // that it is the boundary between messages.
 // See uwb_sr150::run() for more detailed explanation.
