@@ -93,6 +93,57 @@ using namespace time_literals;
 #define TIMEOUT_INIT_5HZ	(3 * TIMEOUT_5HZ) //!< Timeout time in mS, used until GPS is healthy
 #define TIMEOUT_DUMP_ADD	450 //!< Additional time in mS to account for RTCM3 parsing and dumping
 
+//PX4小练习：添加一个简易ringbuffer类
+class SimpleRingBuffer
+{
+public:
+    explicit SimpleRingBuffer(size_t size)
+    : _buffer(new uint8_t[size]),_size(size)  {}
+
+    ~SimpleRingBuffer() {
+        delete[] _buffer;
+    }
+
+    bool push(uint8_t data)
+    {
+        size_t next = (_head + 1) % _size;
+
+        if (next == _tail) {
+            return false; // full
+        }
+
+        _buffer[_head] = data;
+        _head = next;
+        return true;
+    }
+
+    bool pop(uint8_t &data)
+    {
+        if (_head == _tail) {
+            return false; // empty
+        }
+
+        data = _buffer[_tail];
+        _tail = (_tail + 1) % _size;
+        return true;
+    }
+
+    size_t available() const
+    {
+        if (_head >= _tail) {
+            return _head - _tail;
+        } else {
+            return _size - (_tail - _head);
+        }
+    }
+
+private:
+    uint8_t *_buffer;
+    size_t _size;
+    size_t _head{0};
+    size_t _tail{0};
+};
+
 enum class gps_driver_mode_t {
 	None = 0,
 	UBX,
@@ -298,6 +349,9 @@ private:
 	void initializeCommunicationDump();
 
 	static constexpr int SET_CLOCK_DRIFT_TIME_S{5};			///< RTC drift time when time synchronization is needed (in seconds)
+
+	//PX4练习：添加成员变量
+	SimpleRingBuffer _rtcm_ringbuffer{512};
 };
 
 px4::atomic_bool GPS::_is_gps_main_advertised{false};
@@ -593,10 +647,25 @@ void GPS::handleInjectDataTopic()
 			// Prevent injection of data from self
 			if (msg.device_id != get_device_id()) {
 				// Add data to the RTCM parser buffer for frame reassembly
-				size_t added = _rtcm_parser.addData(msg.data, msg.len);
+				// size_t added = _rtcm_parser.addData(msg.data, msg.len);
 
-				if (added < msg.len) {
+				// if (added < msg.len) {
+				// 	perf_count(_rtcm_buffer_full_perf);
+				// }
+
+
+				//PX4小练习：注释以上代码并修改此处
+				// 写入 ring buffer
+				for (size_t i = 0; i < msg.len; i++) {
+				if (!_rtcm_ringbuffer.push(msg.data[i])) {
 					perf_count(_rtcm_buffer_full_perf);
+				}
+				}
+
+				// 从 ring buffer 喂给 parser
+				uint8_t byte;
+				while (_rtcm_ringbuffer.pop(byte)) {
+				_rtcm_parser.addData(&byte, 1);
 				}
 
 				_last_rtcm_injection_time = hrt_absolute_time();
