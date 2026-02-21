@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <drivers/drv_hrt.h>
+#include <px4_platform_common/time.h>
 
 int TestModule::task_spawn(int argc,char *argv[]){
 	_task_id = px4_task_spawn_cmd(
@@ -73,11 +75,32 @@ void TestModule::run(){
 		(unsigned)(_period_us / 1000U),
 		(unsigned)_max_count);
 
+	//进入初始状态的时间戳
+	_state_entered_us = hrt_absolute_time();
+
+	//固定三秒
+	const uint32_t work_timeout_us = 3U * 1000U * 1000U;
+
 	while(!should_exit()){
+		const hrt_abstime now = hrt_absolute_time();
+
+		//统一超时守护
+		if(_state == State::WORK){
+			if((now - _state_entered_us) > work_timeout_us){
+				PX4_WARN("[WORK] timeout (%u ms),switch to IDLE",
+				(unsigned)((now - _state_entered_us) / 1000U));
+
+				_state = State::IDLE;
+				_state_entered_us = now;
+				_counter = 0;
+			}
+		}
+
 		switch(_state){
 			case State::IDLE:
 				PX4_INFO("[IDLE]SWITCH TO THE WORK!!");
 				_state = State::WORK;
+				_state_entered_us = now;
 				_counter = 0;
 				break;
 			case State::WORK:
@@ -85,6 +108,7 @@ void TestModule::run(){
 				if(_counter++ >= _max_count){
 					PX4_INFO("[WORK] WORK DONE,BACK TO THE IDLE...");
 					_state = State::IDLE;
+					_state_entered_us = now;
 				}
 				break;
 		}

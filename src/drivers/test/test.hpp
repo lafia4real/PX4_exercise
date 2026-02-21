@@ -9,6 +9,7 @@
 #include <px4_platform_common/time.h>
 #include <px4_platform_common/getopt.h>
 #include <stdint.h>
+#include <drivers/drv_hrt.h>
 
 class TestModule final : public ModuleBase<TestModule>{
 public:
@@ -37,6 +38,7 @@ private:
 	//初始化
 	State _state{State::IDLE};
 	uint32_t _counter{0};
+	hrt_abstime _state_entered_us{0};
 
 	//参数设置
 	uint32_t _period_us{200000};
