@@ -1,6 +1,15 @@
 /*
 重构代码成PX4风格
-并给函数加输入校验与错误日志
+持续更新：
+给函数加输入校验与错误日志
+在模块里加入“超时后切状态”的逻辑
+加一个“统计计数器”（丢包/CRC错误次数）
+
+在此预留一个后续CRC FAIL的接口...
+// 未来接入帧解析器后：
+// if (crc_failed) {
+//     perf_count(_crc_err_perf);  // ✅ crc_err++
+// }
 */
 #include "test.hpp"
 #include <errno.h>
@@ -8,6 +17,7 @@
 #include <string.h>
 #include <drivers/drv_hrt.h>
 #include <px4_platform_common/time.h>
+#include <perf/perf_counter.h>
 
 int TestModule::task_spawn(int argc,char *argv[]){
 	_task_id = px4_task_spawn_cmd(
@@ -67,7 +77,25 @@ int TestModule::print_status(){
 		(unsigned)_counter,
 		(unsigned)(_period_us / 1000U),
 		(unsigned)_max_count);
+
+	//PX4 perf统计输出
+	perf_print_counter(_drop_perf);
+	perf_print_counter(_crc_err_perf);
+
 	return PX4_OK;
+}
+
+//构造函数
+TestModule::TestModule(){
+	//PC_COUNT:简单计数器
+	_drop_perf = perf_alloc(PC_COUNT,"test_drop");
+	_crc_err_perf = perf_alloc(PC_COUNT,"test_crc_err");
+}
+
+//析构函数
+TestModule::~TestModule(){
+	perf_free(_drop_perf);
+	perf_free(_crc_err_perf);
 }
 
 void TestModule::run(){
@@ -89,6 +117,11 @@ void TestModule::run(){
 			if((now - _state_entered_us) > work_timeout_us){
 				PX4_WARN("[WORK] timeout (%u ms),switch to IDLE",
 				(unsigned)((now - _state_entered_us) / 1000U));
+
+				//增加PX4统计：drop++
+				perf_count(_drop_perf);
+				_drop_count++;
+				PX4_WARN("drop++,drop_count = %u",(unsigned)_drop_count);
 
 				_state = State::IDLE;
 				_state_entered_us = now;
